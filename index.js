@@ -24,7 +24,7 @@ const providerUrl = 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa44561
 const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 const firestore = new Firestore();
 
-const burnAddresses = [
+const nonCirculatingAddresses = [
     '0x0000000000000000000000000000000000000000',
     '0x000000000000000000000000000000000000dead',
     '0xad0A852F968e19cbCB350AB9426276685651ce41',
@@ -44,7 +44,7 @@ exports.getTotalSupply = async (req, res) => {
     if (cacheSnap.exists) {
       const cacheData = cacheSnap.data();
 
-      // 5 days in milliseconds
+      // 1 day in milliseconds
       const ONE_DAY_MS = 24 * 60 * 60 * 1000;
       if ((Date.now() - cacheData.timestamp) <= ONE_DAY_MS) {
         res.status(200).send(cacheData.adjustedTotalSupply.toString());
@@ -54,14 +54,14 @@ exports.getTotalSupply = async (req, res) => {
 
     const contract = new ethers.Contract(contractAddress, erc20Abi, provider);
     const totalSupply = await contract.totalSupply();
-    let burntTotal = ethers.BigNumber.from('0');
+    let nonCirculatingTotal = ethers.BigNumber.from('0');
 
-    for (const burnAddress of burnAddresses) {
-      const burntAmount = await contract.balanceOf(burnAddress);
-      burntTotal = burntTotal.add(burntAmount);
+    for (const nonCirculating of nonCirculatingAddresses) {
+      const amount = await contract.balanceOf(nonCirculating);
+      nonCirculatingTotal = nonCirculatingTotal.add(amount);
     }
 
-    const adjustedTotalSupply = totalSupply.sub(burntTotal);
+    const adjustedTotalSupply = totalSupply.sub(nonCirculatingTotal);
     const adjustedTotalSupplyEth = ethers.utils.formatEther(adjustedTotalSupply);
 
      await cacheRef.set({
